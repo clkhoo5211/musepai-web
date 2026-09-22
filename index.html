@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/musepai-web/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="musepai">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>musepai</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <script>
+    // Register <audio> elements (just_audio) for Web Audio FFT visualization.
+    (function () {
+      var registry = [];
+      var origCreate = document.createElement.bind(document);
+      document.createElement = function (tagName, options) {
+        var el = origCreate(tagName, options);
+        if (String(tagName).toLowerCase() === 'audio') {
+          registry.push(el);
+          el.addEventListener('play', function () {
+            window.musepaiAudioViz._tryAttach(el);
+          });
+        }
+        return el;
+      };
+
+      window.musepaiAudioViz = {
+        _ctx: null,
+        _analyser: null,
+        _source: null,
+        _attachedEl: null,
+        _eqFilters: null,
+        _eqGains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        _eqEnabled: true,
+        _eqFreqs: [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000],
+        _fluxPrevBins: null,
+        _beat: 0,
+        _zeroFrames: 0,
+        bands: new Array(64).fill(0),
+
+        _ensureEqFilters: function () {
+          if (this._eqFilters || !this._ctx) return;
+          this._eqFilters = [];
+          for (var i = 0; i < 10; i++) {
+            var f = this._ctx.createBiquadFilter();
+            f.type = 'peaking';
+            f.frequency.value = this._eqFreqs[i];
+            f.Q.value = 1.41;
+            f.gain.value = this._eqEnabled ? this._eqGains[i] : 0;
+            this._eqFilters.push(f);
+          }
+        },
+
+        _reconnectChain: function () {
+          if (!this._source || !this._analyser || !this._ctx) return;
+          try { this._source.disconnect(); } catch (e) {}
+          if (this._eqFilters) {
+            for (var i = 0; i < this._eqFilters.length; i++) {
+              try { this._eqFilters[i].disconnect(); } catch (e) {}
+            }
+          }
+          try { this._analyser.disconnect(); } catch (e) {}
+          var node = this._source;
+          if (this._eqEnabled && this._eqFilters && this._eqFilters.length) {
+            for (var j = 0; j < this._eqFilters.length; j++) {
+              node.connect(this._eqFilters[j]);
+              node = this._eqFilters[j];
+            }
+          }
+          node.connect(this._analyser);
+          this._analyser.connect(this._ctx.destination);
+        },
+
+        setEqGainsList: function (json, enabled) {
+          try {
+            var gains = JSON.parse(json);
+            this.setEqGains(gains, enabled);
+          } catch (e) {
+            console.warn('[musepaiAudioViz] setEqGainsList failed', e);
+          }
+        },
+
+        setEqGains: function (gains, enabled) {
+          if (Array.isArray(gains)) {
+            for (var i = 0; i < 10; i++) {
+              this._eqGains[i] = typeof gains[i] === 'number' ? gains[i] : 0;
+            }
+          }
+          if (typeof enabled === 'boolean') {
+            this._eqEnabled = enabled;
+          }
+          if (!this._ctx) return;
+          this._ensureEqFilters();
+          if (this._eqFilters) {
+            for (var k = 0; k < this._eqFilters.length; k++) {
+              this._eqFilters[k].gain.value = this._eqEnabled ? this._eqGains[k] : 0;
+            }
+          }
+          this._reconnectChain();
+        },
+
+        _tryAttach: function (el) {
+          if (!el || this._attachedEl === el) return;
+          var src = el.currentSrc || el.src || '';
+          var proxied = src.indexOf('/stream?url=') !== -1;
+          if (proxied && el.crossOrigin !== 'anonymous') {
+            return;
+          }
+          try {
+            if (!this._ctx) {
+              this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (this._ctx.state === 'suspended') {
+              this._ctx.resume();
+            }
+            if (this._source) {
+              try { this._source.disconnect(); } catch (e) {}
+            }
+            this._source = this._ctx.createMediaElementSource(el);
+            if (!this._analyser) {
+              this._analyser = this._ctx.createAnalyser();
+              this._analyser.fftSize = 256;
+              this._analyser.smoothingTimeConstant = 0.62;
+            }
+            this._ensureEqFilters();
+            this._reconnectChain();
+            this._attachedEl = el;
+          } catch (e) {
+            console.warn('[musepaiAudioViz] attach failed', e);
+          }
+        },
+
+        tick: function () {
+          for (var i = 0; i < registry.length; i++) {
+            var el = registry[i];
+            if (el && !el.paused && el.src) {
+              this._tryAttach(el);
+              break;
+            }
+          }
+          if (!this._analyser) return false;
+
+          var buf = new Uint8Array(this._analyser.frequencyBinCount);
+          this._analyser.getByteFrequencyData(buf);
+          var energy = 0;
+          for (var z = 0; z < buf.length; z++) energy += buf[z];
+          if (energy === 0) {
+            this._zeroFrames++;
+            if (this._zeroFrames > 8) return false;
+          } else {
+            this._zeroFrames = 0;
+          }
+          var n = this.bands.length;
+          for (var b = 0; b < n; b++) {
+            var t0 = Math.pow(b / n, 1.32);
+            var t1 = Math.pow((b + 1) / n, 1.32);
+            var i0 = Math.floor(t0 * buf.length);
+            var i1 = Math.max(i0 + 1, Math.floor(t1 * buf.length));
+            var sum = 0;
+            for (var j = i0; j < i1; j++) sum += buf[j];
+            var avg = sum / (i1 - i0) / 255;
+            this.bands[b] = this.bands[b] * 0.5 + avg * 0.5;
+          }
+
+          var flux = 0;
+          var prev = this._fluxPrevBins || new Array(8).fill(0);
+          for (var k = 0; k < 8; k++) {
+            var v = buf[k] / 255;
+            var d = v - prev[k];
+            if (d > 0) flux += d;
+            prev[k] = v;
+          }
+          this._fluxPrevBins = prev;
+          this._beat = flux > 0.12 ? Math.min(1, flux * 2.8) : this._beat * 0.9;
+          return true;
+        },
+
+        readBands: function () {
+          return this.bands.slice();
+        },
+
+        readBeat: function () {
+          return this._beat;
+        },
+      };
+    })();
+  </script>
+  <script>
+    // Mitigate Flutter web negative viewInsets when the virtual keyboard closes
+    // (browser resize / back gesture). See flutter/flutter#175074.
+    (function () {
+      function dismissKeyboardAndResetScroll() {
+        var active = document.activeElement;
+        if (active && active !== document.body && typeof active.blur === 'function') {
+          active.blur();
+        }
+        window.scrollTo(0, 0);
+      }
+
+      if (window.visualViewport) {
+        var lastHeight = window.visualViewport.height;
+        window.visualViewport.addEventListener('resize', function () {
+          var currentHeight = window.visualViewport.height;
+          if (currentHeight > lastHeight + 80) {
+            dismissKeyboardAndResetScroll();
+          }
+          lastHeight = currentHeight;
+        });
+      }
+
+      window.addEventListener('resize', function () {
+        dismissKeyboardAndResetScroll();
+      });
+
+      window.addEventListener('pageshow', function () {
+        dismissKeyboardAndResetScroll();
+      });
+    })();
+  </script>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
