@@ -32,6 +32,111 @@
 
   <title>MusePAI</title>
   <link rel="manifest" href="manifest.json">
+  <!--
+    Native app downloads. This lives in the page rather than in the Flutter
+    app because it is a web-only concern — someone already running the macOS
+    build does not need a link to the macOS build — and because a page script
+    reads the release list at runtime, so shipping a new version never needs
+    the site rebuilt.
+
+    Everything is built in script and hung off <html>: Flutter empties <body>
+    when the engine attaches, which silently removes any static markup left
+    there. It renders nothing when there is no release yet or the request
+    fails — an empty shell would be worse than no button.
+  -->
+  <script>
+    (function () {
+      var REPO = 'clkhoo5211/musepai-web';
+      var zh = (navigator.language || '').toLowerCase().indexOf('zh') === 0;
+      var t = zh ? {
+        pill: '\u4e0b\u8f7d\u5ba2\u6237\u7aef',
+        close: '\u5173\u95ed',
+        note: '\u5b89\u88c5\u5305\u672a\u7b7e\u540d\uff0c\u9996\u6b21\u6253\u5f00\u65f6\u7cfb\u7edf\u4f1a\u8b66\u544a\uff1aAndroid \u9700\u5141\u8bb8\u6b64\u6765\u6e90\u5b89\u88c5\uff0cmacOS \u9700\u53f3\u952e\u70b9\u6309\u5e94\u7528\u540e\u9009\u201c\u6253\u5f00\u201d\uff0cWindows \u9700\u5728 SmartScreen \u4e0a\u9009\u201c\u4ecd\u8981\u8fd0\u884c\u201d\u3002'
+      } : {
+        pill: 'Get the app',
+        close: 'Close',
+        note: 'These builds are unsigned, so each system warns on first launch: Android asks you to allow this source, macOS needs right-click then Open, and Windows needs "Run anyway" on SmartScreen.'
+      };
+
+      // Matched against the asset names the release workflow uploads.
+      var KINDS = [
+        { label: 'Android', suffix: '-android.apk',     match: /android/i },
+        { label: 'Windows', suffix: '-windows-x64.zip', match: /win/i },
+        { label: 'macOS',   suffix: '-macos.dmg',       match: /mac/i }
+      ];
+
+      var CSS = [
+        '#app-downloads{position:fixed;right:16px;bottom:16px;z-index:2147483647;',
+        'font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}',
+        '#app-downloads[hidden]{display:none}',
+        '#app-downloads .pill{display:flex;align-items:center;gap:8px;background:#1f1f24;',
+        'color:#fff;border:1px solid #38383f;border-radius:999px;padding:9px 16px;',
+        'cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.45)}',
+        '#app-downloads .pill:hover{background:#2a2a31}',
+        '#app-downloads .panel{display:none;width:280px;background:#1f1f24;color:#fff;',
+        'border:1px solid #38383f;border-radius:14px;padding:14px;',
+        'box-shadow:0 10px 40px rgba(0,0,0,.5)}',
+        '#app-downloads.open .panel{display:block}#app-downloads.open .pill{display:none}',
+        '#app-downloads h3{margin:0 0 2px;font-size:14px}',
+        '#app-downloads .ver{color:#9a9aa4;font-size:12px;margin-bottom:10px}',
+        '#app-downloads a.dl{display:flex;justify-content:space-between;gap:8px;',
+        'padding:9px 11px;margin-bottom:6px;border-radius:9px;text-decoration:none;',
+        'color:#fff;background:#2a2a31;border:1px solid transparent}',
+        '#app-downloads a.dl:hover{background:#33333c}',
+        '#app-downloads a.dl.mine{border-color:#5b8cff}',
+        '#app-downloads a.dl small{color:#9a9aa4}',
+        '#app-downloads .note{color:#9a9aa4;font-size:11.5px;margin:8px 0 0}',
+        '#app-downloads .close{float:right;color:#9a9aa4;cursor:pointer;background:none;',
+        'border:0;font-size:16px;line-height:1;padding:0}'
+      ].join('');
+
+      function mb(n) { return (n / 1048576).toFixed(1) + ' MB'; }
+
+      fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function (rel) {
+          var ua = navigator.userAgent;
+          var rows = KINDS.map(function (k) {
+            var a = (rel.assets || []).filter(function (x) {
+              return x.name.slice(-k.suffix.length) === k.suffix;
+            })[0];
+            if (!a) return '';
+            // An Android user agent also says "Linux" and can say "Mac", so
+            // Android wins over macOS when both would match.
+            var mine = k.match.test(ua) &&
+              !(k.label === 'macOS' && /android/i.test(ua));
+            return '<a class="dl' + (mine ? ' mine' : '') + '" href="' +
+              a.browser_download_url + '"><span>' + k.label + '</span><small>' +
+              mb(a.size) + '</small></a>';
+          }).join('');
+          if (!rows) return;
+
+          var style = document.createElement('style');
+          style.textContent = CSS;
+          var root = document.createElement('div');
+          root.id = 'app-downloads';
+          root.innerHTML =
+            '<div class="panel"><button class="close" aria-label="' + t.close +
+            '">\u00d7</button><h3>' + t.pill + '</h3><div class="ver">' +
+            (rel.tag_name || '') + '</div>' + rows + '<p class="note">' +
+            t.note + '</p></div>' +
+            '<div class="pill"><span>\u2b07</span><span>' + t.pill + '</span></div>';
+          document.documentElement.appendChild(style);
+          document.documentElement.appendChild(root);
+
+          root.querySelector('.pill').addEventListener('click', function () {
+            root.classList.add('open');
+          });
+          root.querySelector('.close').addEventListener('click', function () {
+            root.classList.remove('open');
+          });
+        })
+        .catch(function (e) {
+          // No release yet, or the API refused: show nothing, but say why.
+          console.warn('[downloads] no panel:', e);
+        });
+    })();
+  </script>
 </head>
 <body>
   <script>
@@ -251,108 +356,6 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <!--
-    Native app downloads. This lives in the page rather than in the Flutter
-    app because it is a web-only concern — someone already running the macOS
-    build does not need a link to the macOS build — and because a page script
-    reads the release list at runtime, so shipping a new version never needs
-    the site rebuilt.
-
-    Everything is built in script and hung off <html>: Flutter empties <body>
-    when the engine attaches, which silently removes any static markup left
-    there. It renders nothing when there is no release yet or the request
-    fails — an empty shell would be worse than no button.
-  -->
-  <script>
-    (function () {
-      var REPO = 'clkhoo5211/musepai-web';
-      var zh = (navigator.language || '').toLowerCase().indexOf('zh') === 0;
-      var t = zh ? {
-        pill: '\u4e0b\u8f7d\u5ba2\u6237\u7aef',
-        close: '\u5173\u95ed',
-        note: '\u5b89\u88c5\u5305\u672a\u7b7e\u540d\uff0c\u9996\u6b21\u6253\u5f00\u65f6\u7cfb\u7edf\u4f1a\u8b66\u544a\uff1aAndroid \u9700\u5141\u8bb8\u6b64\u6765\u6e90\u5b89\u88c5\uff0cmacOS \u9700\u53f3\u952e\u70b9\u6309\u5e94\u7528\u540e\u9009\u201c\u6253\u5f00\u201d\uff0cWindows \u9700\u5728 SmartScreen \u4e0a\u9009\u201c\u4ecd\u8981\u8fd0\u884c\u201d\u3002'
-      } : {
-        pill: 'Get the app',
-        close: 'Close',
-        note: 'These builds are unsigned, so each system warns on first launch: Android asks you to allow this source, macOS needs right-click then Open, and Windows needs "Run anyway" on SmartScreen.'
-      };
-
-      // Matched against the asset names the release workflow uploads.
-      var KINDS = [
-        { label: 'Android', suffix: '-android.apk',     match: /android/i },
-        { label: 'Windows', suffix: '-windows-x64.zip', match: /win/i },
-        { label: 'macOS',   suffix: '-macos.dmg',       match: /mac/i }
-      ];
-
-      var CSS = [
-        '#app-downloads{position:fixed;right:16px;bottom:16px;z-index:2147483647;',
-        'font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}',
-        '#app-downloads[hidden]{display:none}',
-        '#app-downloads .pill{display:flex;align-items:center;gap:8px;background:#1f1f24;',
-        'color:#fff;border:1px solid #38383f;border-radius:999px;padding:9px 16px;',
-        'cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.45)}',
-        '#app-downloads .pill:hover{background:#2a2a31}',
-        '#app-downloads .panel{display:none;width:280px;background:#1f1f24;color:#fff;',
-        'border:1px solid #38383f;border-radius:14px;padding:14px;',
-        'box-shadow:0 10px 40px rgba(0,0,0,.5)}',
-        '#app-downloads.open .panel{display:block}#app-downloads.open .pill{display:none}',
-        '#app-downloads h3{margin:0 0 2px;font-size:14px}',
-        '#app-downloads .ver{color:#9a9aa4;font-size:12px;margin-bottom:10px}',
-        '#app-downloads a.dl{display:flex;justify-content:space-between;gap:8px;',
-        'padding:9px 11px;margin-bottom:6px;border-radius:9px;text-decoration:none;',
-        'color:#fff;background:#2a2a31;border:1px solid transparent}',
-        '#app-downloads a.dl:hover{background:#33333c}',
-        '#app-downloads a.dl.mine{border-color:#5b8cff}',
-        '#app-downloads a.dl small{color:#9a9aa4}',
-        '#app-downloads .note{color:#9a9aa4;font-size:11.5px;margin:8px 0 0}',
-        '#app-downloads .close{float:right;color:#9a9aa4;cursor:pointer;background:none;',
-        'border:0;font-size:16px;line-height:1;padding:0}'
-      ].join('');
-
-      function mb(n) { return (n / 1048576).toFixed(1) + ' MB'; }
-
-      fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
-        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-        .then(function (rel) {
-          var ua = navigator.userAgent;
-          var rows = KINDS.map(function (k) {
-            var a = (rel.assets || []).filter(function (x) {
-              return x.name.slice(-k.suffix.length) === k.suffix;
-            })[0];
-            if (!a) return '';
-            // An Android user agent also says "Linux" and can say "Mac", so
-            // Android wins over macOS when both would match.
-            var mine = k.match.test(ua) &&
-              !(k.label === 'macOS' && /android/i.test(ua));
-            return '<a class="dl' + (mine ? ' mine' : '') + '" href="' +
-              a.browser_download_url + '"><span>' + k.label + '</span><small>' +
-              mb(a.size) + '</small></a>';
-          }).join('');
-          if (!rows) return;
-
-          var style = document.createElement('style');
-          style.textContent = CSS;
-          var root = document.createElement('div');
-          root.id = 'app-downloads';
-          root.innerHTML =
-            '<div class="panel"><button class="close" aria-label="' + t.close +
-            '">\u00d7</button><h3>' + t.pill + '</h3><div class="ver">' +
-            (rel.tag_name || '') + '</div>' + rows + '<p class="note">' +
-            t.note + '</p></div>' +
-            '<div class="pill"><span>\u2b07</span><span>' + t.pill + '</span></div>';
-          document.documentElement.appendChild(style);
-          document.documentElement.appendChild(root);
-
-          root.querySelector('.pill').addEventListener('click', function () {
-            root.classList.add('open');
-          });
-          root.querySelector('.close').addEventListener('click', function () {
-            root.classList.remove('open');
-          });
-        })
-        .catch(function () { /* no release yet, or offline: show nothing */ });
-    })();
-  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
