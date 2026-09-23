@@ -155,22 +155,34 @@
             if (saved) place(saved.x, saved.y);
           } catch (e) { /* default corner */ }
 
+          // 8px from where the press started, not 8px of accumulated path.
+          // Summing every movement delta counted the wobble of an ordinary
+          // click, so clicking the pill dragged it away instead of opening it.
+          var DRAG_SLOP = 8;
+
           pill.addEventListener('pointerdown', function (e) {
             var box = root.getBoundingClientRect();
-            drag = { dx: e.clientX - box.left, dy: e.clientY - box.top, moved: 0 };
+            drag = {
+              dx: e.clientX - box.left,
+              dy: e.clientY - box.top,
+              x0: e.clientX,
+              y0: e.clientY,
+            };
             pill.setPointerCapture(e.pointerId);
-            root.classList.add('dragging');
           });
 
           pill.addEventListener('pointermove', function (e) {
             if (!drag) return;
-            drag.moved += Math.abs(e.movementX) + Math.abs(e.movementY);
+            var far = Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0);
+            if (far <= DRAG_SLOP) return;      // still a click, so leave it put
+            root.classList.add('dragging');
             place(e.clientX - drag.dx, e.clientY - drag.dy);
           });
 
           pill.addEventListener('pointerup', function (e) {
             if (!drag) return;
-            var wasDrag = drag.moved > 4;   // anything less was a tap
+            var wasDrag =
+              Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > DRAG_SLOP;
             drag = null;
             root.classList.remove('dragging');
             if (wasDrag) {
@@ -182,6 +194,18 @@
               return;
             }
             root.classList.add('open');
+          });
+
+          // Somewhere to put it back. A pill that has been dragged off into
+          // the middle of the page has no other way home, and clearing site
+          // data is not an answer to ask anyone for.
+          pill.addEventListener('dblclick', function () {
+            root.style.left = '';
+            root.style.top = '';
+            root.style.right = '';
+            root.style.bottom = '';
+            root.classList.remove('open');
+            try { localStorage.removeItem(POS_KEY); } catch (e) { /* fine */ }
           });
 
           // A window that shrank can leave it off screen.
