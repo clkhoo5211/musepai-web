@@ -18,19 +18,19 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="MusePAI — a music player.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="musepai">
+  <meta name="apple-mobile-web-app-title" content="MusePAI">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>musepai</title>
+  <title>MusePAI</title>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
@@ -251,6 +251,104 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!--
+    Native app downloads. This lives in the page rather than in the Flutter
+    app because it is a web-only concern — someone already running the macOS
+    build does not need a link to the macOS build — and because a page script
+    can read the release list at runtime, so shipping a new version never
+    needs the site rebuilt.
+
+    It renders nothing at all when there is no release yet, or when the
+    request fails: an empty shell would be worse than no button.
+  -->
+  <style>
+    #app-downloads { position: fixed; right: 16px; bottom: 16px; z-index: 9999;
+      font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #app-downloads[hidden] { display: none; }
+    #app-downloads .pill { display: flex; align-items: center; gap: 8px;
+      background: #1f1f24; color: #fff; border: 1px solid #38383f; border-radius: 999px;
+      padding: 9px 16px; cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+    #app-downloads .pill:hover { background: #2a2a31; }
+    #app-downloads .panel { display: none; width: 280px; margin-bottom: 10px;
+      background: #1f1f24; color: #fff; border: 1px solid #38383f; border-radius: 14px;
+      padding: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+    #app-downloads.open .panel { display: block; }
+    #app-downloads.open .pill { display: none; }
+    #app-downloads h3 { margin: 0 0 2px; font-size: 14px; }
+    #app-downloads .ver { color: #9a9aa4; font-size: 12px; margin-bottom: 10px; }
+    #app-downloads a.dl { display: flex; justify-content: space-between; gap: 8px;
+      padding: 9px 11px; margin-bottom: 6px; border-radius: 9px; text-decoration: none;
+      color: #fff; background: #2a2a31; border: 1px solid transparent; }
+    #app-downloads a.dl:hover { background: #33333c; }
+    #app-downloads a.dl.mine { border-color: #5b8cff; }
+    #app-downloads a.dl small { color: #9a9aa4; }
+    #app-downloads .note { color: #9a9aa4; font-size: 11.5px; margin: 8px 0 0; }
+    #app-downloads .close { float: right; color: #9a9aa4; cursor: pointer;
+      background: none; border: 0; font-size: 16px; line-height: 1; padding: 0; }
+  </style>
+  <div id="app-downloads" hidden>
+    <div class="panel"></div>
+    <div class="pill"><span>⬇</span><span class="pill-label"></span></div>
+  </div>
+  <script>
+    (function () {
+      var REPO = 'clkhoo5211/musepai-web';
+      var zh = (navigator.language || '').toLowerCase().indexOf('zh') === 0;
+      var t = zh ? {
+        pill: '下载客户端', title: '下载客户端', close: '关闭',
+        android: 'Android', windows: 'Windows', macos: 'macOS',
+        note: '安装包未签名,首次打开时系统会警告:Android 需允许此来源安装,macOS 需右键点按应用后选“打开”,Windows 需在 SmartScreen 上选“仍要运行”。'
+      } : {
+        pill: 'Get the app', title: 'Get the app', close: 'Close',
+        android: 'Android', windows: 'Windows', macos: 'macOS',
+        note: 'These builds are unsigned, so each system warns on first launch: Android asks you to allow this source, macOS needs right-click then Open, and Windows needs "Run anyway" on SmartScreen.'
+      };
+
+      // Matched against the asset names the release workflow uploads.
+      var KINDS = [
+        { key: 'android', suffix: '-android.apk',      match: /android/i },
+        { key: 'windows', suffix: '-windows-x64.zip',  match: /win/i },
+        { key: 'macos',   suffix: '-macos.dmg',        match: /mac/i }
+      ];
+
+      var root = document.getElementById('app-downloads');
+      var panel = root.querySelector('.panel');
+      var pill = root.querySelector('.pill');
+      root.querySelector('.pill-label').textContent = t.pill;
+
+      function mb(n) { return (n / 1048576).toFixed(1) + ' MB'; }
+
+      fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function (rel) {
+          var ua = navigator.userAgent;
+          var rows = KINDS.map(function (k) {
+            var a = (rel.assets || []).filter(function (x) {
+              return x.name.slice(-k.suffix.length) === k.suffix;
+            })[0];
+            if (!a) return '';
+            // Highlight the visitor's own platform; Android before macOS
+            // because an Android UA also contains "Linux".
+            var mine = k.match.test(ua) && !(k.key === 'macos' && /android/i.test(ua));
+            return '<a class="dl' + (mine ? ' mine' : '') + '" href="' +
+              a.browser_download_url + '"><span>' + t[k.key] +
+              '</span><small>' + mb(a.size) + '</small></a>';
+          }).join('');
+          if (!rows) return;                       // a release with no assets
+
+          panel.innerHTML = '<button class="close" aria-label="' + t.close +
+            '">×</button><h3>' + t.title + '</h3><div class="ver">' +
+            (rel.tag_name || '') + '</div>' + rows +
+            '<p class="note">' + t.note + '</p>';
+          panel.querySelector('.close').addEventListener('click', function () {
+            root.classList.remove('open');
+          });
+          pill.addEventListener('click', function () { root.classList.add('open'); });
+          root.hidden = false;
+        })
+        .catch(function () { /* no release yet, or offline: show nothing */ });
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
