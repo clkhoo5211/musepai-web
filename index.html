@@ -66,13 +66,19 @@
       ];
 
       var CSS = [
-        '#app-downloads{position:fixed;right:16px;bottom:16px;z-index:2147483647;',
+        // Default above the player bar rather than on top of it: the bar is
+        // ~96px on a desktop and the bottom nav ~70px on a phone, and a pill
+        // pinned to bottom:16 sat squarely on both.
+        '#app-downloads{position:fixed;right:16px;bottom:104px;z-index:2147483647;',
         'font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}',
+        '@media (max-width:600px){#app-downloads{bottom:80px}}',
         '#app-downloads[hidden]{display:none}',
         '#app-downloads .pill{display:flex;align-items:center;gap:8px;background:#1f1f24;',
         'color:#fff;border:1px solid #38383f;border-radius:999px;padding:9px 16px;',
         'cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.45)}',
         '#app-downloads .pill:hover{background:#2a2a31}',
+        '#app-downloads .pill{touch-action:none;user-select:none}',
+        '#app-downloads.dragging .pill{cursor:grabbing}',
         '#app-downloads .panel{display:none;width:280px;background:#1f1f24;color:#fff;',
         'border:1px solid #38383f;border-radius:14px;padding:14px;',
         'box-shadow:0 10px 40px rgba(0,0,0,.5)}',
@@ -124,8 +130,64 @@
           document.documentElement.appendChild(style);
           document.documentElement.appendChild(root);
 
-          root.querySelector('.pill').addEventListener('click', function () {
+          var pill = root.querySelector('.pill');
+
+          // Draggable, because a fixed corner is the one place a floating
+          // button is guaranteed to be in the way of something. The position
+          // is per-browser and survives reloads; it is a convenience, so a
+          // storage that refuses to answer simply means the default corner.
+          var POS_KEY = 'musepai.downloads.pos';
+          var drag = null;
+
+          function place(left, top) {
+            var w = root.offsetWidth, h = root.offsetHeight;
+            var x = Math.min(Math.max(0, left), window.innerWidth - w);
+            var y = Math.min(Math.max(0, top), window.innerHeight - h);
+            root.style.left = x + 'px';
+            root.style.top = y + 'px';
+            root.style.right = 'auto';
+            root.style.bottom = 'auto';
+            return { x: x, y: y };
+          }
+
+          try {
+            var saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
+            if (saved) place(saved.x, saved.y);
+          } catch (e) { /* default corner */ }
+
+          pill.addEventListener('pointerdown', function (e) {
+            var box = root.getBoundingClientRect();
+            drag = { dx: e.clientX - box.left, dy: e.clientY - box.top, moved: 0 };
+            pill.setPointerCapture(e.pointerId);
+            root.classList.add('dragging');
+          });
+
+          pill.addEventListener('pointermove', function (e) {
+            if (!drag) return;
+            drag.moved += Math.abs(e.movementX) + Math.abs(e.movementY);
+            place(e.clientX - drag.dx, e.clientY - drag.dy);
+          });
+
+          pill.addEventListener('pointerup', function (e) {
+            if (!drag) return;
+            var wasDrag = drag.moved > 4;   // anything less was a tap
+            drag = null;
+            root.classList.remove('dragging');
+            if (wasDrag) {
+              var box = root.getBoundingClientRect();
+              try {
+                localStorage.setItem(POS_KEY,
+                  JSON.stringify({ x: box.left, y: box.top }));
+              } catch (err) { /* position simply is not remembered */ }
+              return;
+            }
             root.classList.add('open');
+          });
+
+          // A window that shrank can leave it off screen.
+          window.addEventListener('resize', function () {
+            if (root.style.left === '') return;
+            place(parseFloat(root.style.left), parseFloat(root.style.top));
           });
           root.querySelector('.close').addEventListener('click', function () {
             root.classList.remove('open');
