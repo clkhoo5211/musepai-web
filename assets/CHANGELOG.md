@@ -4,6 +4,190 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.43] — 2026-10-10 — Hokkien characters that rendered as boxes
+
+### Fixed
+- **Four Taiwanese Hokkien characters drew as empty boxes on the web build.**
+  蚻 (in the title and lyrics of `b6_nan09` 虼蚻), 擛 and 跍 (`b6_nan03`) and 捾
+  (`b6_nan08`) are in none of the 724 Noto fonts Flutter web 3.41.6 falls back
+  to, nor in Inter or Roboto. Across all 373 tracks those were the only four;
+  every other code point was checked against the real font cmaps, not against
+  Unicode blocks. The app now bundles a 136-character Han-only subset of
+  Iansui 芫荽 (OFL 1.1, 108 KB, 63 KB gzipped): the Hokkien characters from the
+  Ministry of Education dictionary that Flutter's fallback cannot draw, plus
+  the four. It carries no Latin and no common Han, so text that already
+  rendered keeps its font. It is attached as a fallback on the theme's text
+  styles; `ThemeData.fontFamilyFallback` could not be used because the
+  google_fonts styles carry their own family list, which wins when styles merge.
+- **The mini player showed the literal text `${song.name}`.** An escaped `$`
+  in the artist line. Fixed with the same change that moved it to `Text.rich`.
+- Three `RichText` widgets (mini player, AI DJ) moved to `Text.rich`.
+  `RichText` does not inherit the theme's text style, so they would not have
+  picked up the fallback font.
+
+### Added
+- `scripts/glyph_audit.py` reports any character in the AI library that the web
+  build would draw as a box. It reads the fallback table from the installed
+  Flutter SDK, so a Flutter upgrade is checked automatically. Run it before
+  publishing a library batch. `--self-test` proves it can fail: without the
+  bundled font it reports exactly the four characters above.
+- The Iansui licence is registered with `LicenseRegistry`, so it shows in the
+  app's licence page as the OFL requires.
+
+### Known gaps
+- The Tâi-lô tone mark U+030D (as in `Ka-tsua̍h`) renders correctly, a short
+  vertical bar from Noto Sans, but it is about two pixels tall at list size.
+  It is not a box; it is just small.
+- The subset covers only what is listed above. A future song can use a
+  character it lacks. The audit catches that before publishing, and its
+  docstring holds the command to rebuild the subset.
+
+**Git tag:** `v0.5.43-hokkien-glyphs`
+
+---
+
+## [0.5.42] — 2026-09-29 — Fifty more tracks, written off live charts
+
+### Added
+- **Fifty AI tracks, five in each of ten languages**, taking the library from 73
+  to 123 and the genre count from 53 to 102. Thirteen of them are rap, one lane
+  per language, each written to that language's own prosody rather than to a US
+  trap template: Hokkien leans on the entering-tone stops Mandarin does not
+  have, Korean lands on final consonants and inverts word order so the rhyme
+  does not fall on a grammatical ending, Japanese rhymes on mora runs placed
+  mid-bar because the language has almost no stress, Vietnamese rides the six
+  tones, Cantonese uses consonant attack and punning.
+- **The songs were written from live chart research, not from memory.** Five
+  agents pulled the current charts and production trends for the Chinese-speaking
+  markets, English, Japan and Korea, Malaysia and Indonesia, and Vietnam and
+  Thailand. Four of their findings reversed what this project would otherwise
+  have written: country is the centre of the English chart rather than a
+  crossover story; afro house is the year's fastest-growing sound; Vietnamese
+  and Thai charts carry no traditional instruments at all, so adding a đàn tranh
+  or a ranat reads as tourism rather than as local; and the Taiwanese Hokkien
+  category turned over generationally this year, so the drinking-and-fate
+  register is the tired one.
+
+### Fixed
+- **One track displayed its first line through a forty-second instrumental
+  intro.** `b2_zh01`'s first lyric was anchored at 0.00s and stretched to 46s.
+  MMS_FA speech-presence scanning showed the audio was fine — singing runs
+  40-95s — and a track in the same batch with a 51.8s intro aligned correctly,
+  so the long intro was not the cause. Re-running the aligner reproduced it
+  exactly; regenerating the track put the first line at 13.2s. The timings were
+  not edited by hand.
+
+### Changed
+- The lyrics corpus fixture now covers all 123 published tracks. It had been
+  left at 73, which meant the suite was green while testing none of the new
+  material — the failure above appeared the moment it was refreshed. Suite:
+  689 → **989 assertions**.
+- Published audio lives in the `media-<day>` GitHub releases; only the most
+  recent day is kept on disk. Older days are removed only after every local
+  file has been matched by name against that release's assets.
+
+### Known gaps
+- The Cantonese and Hokkien accents, and Cantonese 協音 — whether the character
+  tones track the melody — can only be judged by ear. The alignment rate proves
+  the sung words are the written words; it says nothing about whether the accent
+  is right.
+
+**Git tag:** `v0.5.42-fifty-more`
+
+---
+
+## [0.5.41] — 2026-09-25 — Three days that never shipped
+
+Twenty-two commits had piled up behind `v0.5.40`: the truthfulness audit, the
+seventy-track library, and a day of fixes the deploys exposed. They ship as one
+release because that is what happened — one push — rather than as three tags
+invented after the fact.
+
+### Removed
+- **Ten pages that described things the app does not have.** The audit compared
+  every screen against the `/screens` mockups it was converted from and against
+  the 88 endpoints the backend actually serves. Pages quoting prices, offering
+  ticketing, parental controls or ownership transfer were deleted rather than
+  left as "not built" shells; `not_built_screen.dart` is the honest stand-in
+  where a route still had to resolve.
+- **The privacy page was the worst of them.** It listed Apple Music, Last.fm and
+  Stats.fm as holding data access, with grant dates and 撤销 buttons, and
+  described the data handling backwards. Rewritten to state what stays on the
+  device, what leaves it, and what does not exist.
+- **Design-QA fixtures stopped borrowing real people's names.**
+- `netease_api.dart` (135 lines, zero importers) and `mv_inline_player.dart`
+  (246 lines, zero references), both named as dead by the audit and both still
+  dead. `go_router` was declared in pubspec and imported by nothing — navigation
+  is an 84-case switch.
+
+### Added
+- **Seventy AI tracks across ten languages**, published to `musepai-library` and
+  serving from the web app: Chinese, English, Malay, Japanese, Korean via
+  ACE-Step, and Cantonese and Taiwanese Hokkien via mlx-Yue, which has no
+  phonology for either in ACE. 47 genres, no BPM invented where the engine takes
+  none. Verified in three layers that prove different things — MMS_FA forced
+  alignment (73/73, zero refusals), a 439-assertion corpus test, and the
+  rendered lyrics of all 73 read back out of the browser and compared character
+  by character against the source.
+- **A second frontend**, mirrored at `blissful-hazel-kkr9.here.now`, and
+  `deploy/publish-herenow.sh` to publish it. The two cannot share a build: the
+  base href is compiled in, and running the two publishes back to back once
+  shipped a mirror whose every asset 404'd. The script rebuilds for `/`, refuses
+  a tree built for anything else, and checks the backend's CORS allowlist before
+  it spends a minute building.
+
+### Fixed
+- **The lyric panel stopped following the music after any hand scroll.** The
+  latch was set on `UserScrollNotification` but released only by a timer that
+  `ScrollEndNotification` armed — and a wheel scroll reports no end, so the
+  latch was held for the rest of the song. It now releases on its own.
+  Reproducible with one wheel gesture; A/B on the two deploys shows the old
+  build frozen for the whole track and the new one back in 2.5 s.
+- **The admin console drew two switches for one route.** 「历史日推」 is a tab
+  inside the 听歌历史 screen, so both menu rows carry `ShellRoutes.history` and
+  the two switches could never hold different values.
+- **Unlocking the console could write a stale cache back to the server.** The
+  token check saves the current values, which is only idempotent if they are the
+  server's — and `FlagsProvider` starts from a cached copy. An unlock
+  re-disabled a column that had been re-enabled nine minutes earlier.
+- **The admin token is checked when it is entered**, not minutes later on save.
+- `album_screen`'s empty state was a `Center` holding a fixed `Column`, which
+  cannot give way on a short window.
+
+### Changed
+- **`screen_audit.py` passes, and the pass means something.** Two of its three
+  failures were the checker: it greps a screen file for `SingleChildScrollView`
+  and `ResponsiveWrapper`, and `login_screen` gets both from
+  `AuthSplitScaffold` — whose comments carry the pixel counts of overflows
+  already fixed there.
+- **Provider strings became reasons, not sentences.** A provider has no
+  `BuildContext` and so no locale, but ten of them held Chinese copy that leaked
+  into every screen reading them — the repeat-mode tooltip and the audio-quality
+  chips were showing Chinese in an English build, with a helper that already
+  mapped the right keys sitting unused. Nine providers now record an issue enum
+  and the words live in `lib/l10n/`. Hardcoded Chinese literals in `lib/`:
+  1,184 → 1,132.
+
+### Known gaps
+- **A cosmetic truncation on the podcast category chips is unexplained.** The API
+  returns 「有声书」 and 「故事」; the chips render 「有声」 and 「故」, and the
+  selected "Discover" chip shows "Discove". Two hypotheses were tested against
+  the live build and both were wrong: a squeezed tap target, and a layout
+  computed before the CJK webfont arrives. Left unfixed rather than shipped with
+  a guess.
+- **「一起听派对」 synchronises nothing.** `party_provider` makes no API call and
+  there is no realtime transport anywhere in `lib/`: the room id is local, chat
+  appends to a local list, and the members are borrowed from the signed-in
+  user's real follows — so the screen claims people are listening together who
+  do not know. Upstream has no such feature either; its `remoteControl.ts` is a
+  LAN server for controlling your own playback from a second device. Its fate is
+  the owner's call.
+- The dialect tracks' accents can only be judged by ear; no tool can do it.
+
+**Git tag:** `v0.5.41-three-days`
+
+---
+
 ## [0.5.40] — 2026-09-23 — Lyrics aligned against the audio
 
 ### Added
