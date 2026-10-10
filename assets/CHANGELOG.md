@@ -4,6 +4,38 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.44] — 2026-10-10 — The lyric panel no longer gets lost on a far seek
+
+### Fixed
+- **Seeking far into a long song could leave the lyric panel stuck at the end
+  with no line highlighted, until the user scrolled by hand.** Reproduced on
+  the live site every time. Opening the panel within a few seconds of
+  starting 糞埽車來矣 (40 lines) and seeking to 1:27 left it pinned at the
+  bottom, and 10 s later it was still there. When the active line is not
+  built yet (the list builds only rows near the viewport), the panel jumps
+  toward it by index × an estimated row height. The estimate was a fixed
+  92 px against rows of about 61 px on desktop, so a seek to line 33 landed
+  about 1,000 px past it. That is outside the built range, so the retry loop
+  never found the line, and each later tick repeated the same jump. The
+  height is now measured from the list's own scroll extent (content minus
+  padding, over the line count). The fixed value is only the fallback before
+  layout. Normal playback was never affected, because the active line
+  advances one row at a time and is always built.
+
+### Changed
+- In the AI library, the 11 Cantonese and Taiwanese Hokkien tracks from
+  2026-10-09 that rendered under 165 s were regenerated with extended lyrics.
+  Each extension was reviewed by a native-language editor, and no existing
+  line was changed. They now run 166-215 s. mlx-Yue sets length from the
+  lyric structure, not from a duration, so the short ones needed more
+  sections, not a setting. 13 other tracks got per-line lyric timing. Lines
+  moved by more than 3 s were kept only with independent evidence, and the
+  day's timing problems went from 69 to 55.
+
+**Git tag:** `v0.5.44-lyric-seek`
+
+---
+
 ## [0.5.43] — 2026-10-10 — Hokkien characters that rendered as boxes
 
 ### Fixed
