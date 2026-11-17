@@ -4,6 +4,33 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.54] — 2026-11-17 — The payment recipient is set from the admin console
+
+### Added
+- **Admin-editable recipient.** The testnet recipient is read from `pay.json` at the
+  root of the public library repo (raw GitHub, no backend), cached, and falls back to
+  the build-time `PAY_RECIPIENT` when the file is absent (404). Precedence: repo,
+  cache, build default. A malformed or zero address is ignored; mainnet is still
+  refused.
+- **"Payment recipient" card in the admin console.** Shows the current address and
+  where it came from; saving writes `pay.json` through the GitHub Contents API with a
+  token pasted for that one save (kept in memory only, cleared after the attempt).
+  Needs no Vercel backend, so it works while the backend is suspended.
+
+### Changed
+- The recipient is frozen into the quote and saved with a pending transaction, so
+  changing it mid-payment cannot turn a legitimate payment into "wrong recipient".
+- Checkout refreshes the recipient (cache-busted) when it opens; already-open pages
+  can lag by about 5 minutes (raw GitHub cache).
+
+### Verified
+- 1058 tests pass (13 new). The GitHub write path is covered with a mocked client
+  only; it has not been run against a real token.
+
+**Git tag:** `v0.5.54-admin-pay-recipient`
+
+---
+
 ## [0.5.53] — 2026-11-17 — Pay on the wallet's own chain; a local chain that matches MetaMask
 
 ### Fixed
