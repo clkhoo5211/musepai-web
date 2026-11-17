@@ -4,6 +4,49 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.50] — 2026-11-17 — A connected Reown wallet counts as signed in
+
+### Changed
+- **One definition of "signed in".** `IdentityProvider` combines the Netease
+  session, a connected Reown wallet and the admin token. The guest trial banner,
+  countdown and prompts, the 10-item list caps, the route guard, and the
+  "not signed in" labels all read it, so a wallet or social login via Reown is no
+  longer treated as a guest. Everything backed by Netease data (playlist sync,
+  comments, messages, follows, import, party, family) still needs a Netease
+  session and shows a "needs a Netease account" card to a wallet-only user rather
+  than a redirect.
+- Home, search, MV, toplist, album and playlist data reload when the signed-in
+  state changes, so the guest cap does not outlive the login.
+- Settings profile, home greeting, comments and the Netease row show the wallet
+  (short address) or "Netease account not linked" instead of guest wording.
+
+### Fixed
+- **Paying after a page reload failed with "wallet unavailable".** The saved
+  address was restored but the Reown bridge was not loaded in the new page. The
+  bridge is now loaded in the background at startup and before paying, and AppKit
+  gets 15 s to restore the session. If it cannot (for example MetaMask dropped the
+  site), the saved address is cleared so the UI stops claiming a connection, the
+  checkout says the wallet connection expired and offers a reconnect button. A
+  session that restores late is adopted.
+- A failed bridge load was cached, so "reconnect" stayed dead until a reload; only
+  a success is cached now.
+- Reown Authentication (a sign-a-message step) failed with MetaMask error 4100 and
+  was switched off in the Reown dashboard. Nothing verifies the signature without
+  a server, so it protected nothing.
+
+### Not done
+- A real MetaMask session restore after a reload has not been tried.
+- Netease features stay down until the Vercel backend returns (suspended for
+  fast origin transfer until 2026-12-13). `deploy/cf-probe` holds a local test of
+  running it on Cloudflare Workers: search and recommendations run with two small
+  patches, unlock does not fit the free plan's 10 ms CPU, and Cloudflare's egress
+  to Netease and kuwo is untested. The plan is to wait for the unpause and look for
+  a server later.
+
+**Git tag:** `v0.5.50-wallet-signed-in`
+
+---
+
 ## [0.5.49] — 2026-11-17 — Testnet crypto checkout (Base Sepolia)
 
 ### Added
