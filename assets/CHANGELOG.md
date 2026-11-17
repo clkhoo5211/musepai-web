@@ -4,6 +4,23 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.48] — 2026-11-17 — Reown modal: the five wanted providers on the main row
+
+### Changed
+- The Reown modal's main row is now Google (wide button), Apple, X, Discord and
+  Facebook. GitHub and Farcaster sit behind "...". With the previous order
+  Apple and Facebook were behind "...", and that "All Socials" view rendered
+  with no buttons in two gstack runs. The cause of the empty view is not found:
+  AppKit's source falls back to a default list rather than rendering nothing, and
+  the investigator could not reproduce it on the reordered build. The "..." list
+  was not re-checked after the reorder.
+- Verified on the deployed GitHub Pages bundle (hash equal to the local build)
+  that the main row shows the five providers.
+
+**Git tag:** `v0.5.48-reown-social-order`
+
+---
+
 ## [0.5.47] — 2026-11-17 — Reown social login no longer hangs on here.now
 
 ### Fixed
