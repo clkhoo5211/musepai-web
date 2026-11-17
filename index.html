@@ -323,6 +323,14 @@
           if (proxied && el.crossOrigin !== 'anonymous') {
             return;
           }
+          // A cross-origin element without CORS is tainted: routing it through
+          // Web Audio would output silence, so leave it playing natively.
+          try {
+            if (new URL(src, location.href).origin !== location.origin &&
+                el.crossOrigin !== 'anonymous') {
+              return;
+            }
+          } catch (e) { return; }
           try {
             if (!this._ctx) {
               this._ctx = new (window.AudioContext || window.webkitAudioContext)();
