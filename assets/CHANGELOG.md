@@ -4,6 +4,26 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.47] — 2026-11-17 — Reown social login no longer hangs on here.now
+
+### Fixed
+- **Social login (Apple, Google, GitHub, X) spun forever on here.now.** here.now
+  sends `Referrer-Policy: no-referrer` on every page, so the browser sent no
+  Referer to `secure.walletconnect.org`, which answered the embed with HTTP 400
+  `{"error":"Validate SDK: Missing projectId or referer"}` and the popup waited
+  on it. `web/index.html` now sets `<meta name="referrer" content="origin">`.
+  Verified on both sites with gstack browse in headed mode: the popup reaches
+  GitHub's sign-in page. No credentials were entered.
+
+### Note
+- On GitHub Pages the same symptom came from the Reown dashboard: the allowed
+  domain was entered with a path (`https://clkhoo5211.github.io/musepai-web`),
+  which a `frame-ancestors` CSP never matches. Domains must be origins only.
+
+**Git tag:** `v0.5.47-reown-referrer`
+
+---
+
 ## [0.5.46] — 2026-11-17 — Reown login: all providers, no stuck button, clickable profile chip
 
 ### Fixed
