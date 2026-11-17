@@ -4,6 +4,35 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.46] — 2026-11-17 — Reown login: all providers, no stuck button, clickable profile chip
+
+### Fixed
+- **The Reown button stayed disabled after the modal was closed.** `connect()`
+  set `busy` and only cleared it when an address arrived or after five
+  minutes, so cancelling left "正在加载登录组件" until a page reload. The
+  bridge now reports `modalOpen`/`sawOpen`, and the provider clears `busy`
+  once a modal that was open is closed with no address.
+- **The profile chip at the top right of Home did nothing.** It was a plain
+  container. It now opens the login page, or the profile when signed in.
+
+### Changed
+- The Reown modal asked for only Google, Apple, GitHub and X, whatever the
+  dashboard had enabled. It now asks for all seven (Google, X, Discord,
+  Farcaster, GitHub, Apple, Facebook), and the dashboard toggles decide which
+  appear. `reown-bridge.js` rebuilt from `web-reown/`.
+
+### Not fixed
+- Social login (Apple, Google) can sit on `secure.walletconnect.org/loading`.
+  The AppKit modal, the secure iframe and the project config (social_login
+  and payments enabled) all load, so the cause is not found; try a regular
+  Chrome profile to rule out the embedded browser.
+- Enabling Payments in the Reown dashboard does not make plans payable here:
+  `CommerceProvider` is a mock and nothing creates a Reown payment.
+
+**Git tag:** `v0.5.46-reown-login`
+
+---
+
 ## [0.5.45] — 2026-11-17 — The AI library plays without the backend
 
 ### Changed

@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <!-- Hosts such as here.now send Referrer-Policy: no-referrer. Reown's
+       secure.walletconnect.org rejects an embed with no Referer ("Missing
+       projectId or referer", HTTP 400), so social login hung. Send the origin. -->
+  <meta name="referrer" content="origin">
   <!--
     If you are serving your web app in a path other than the root, change the
     href value below to reflect the base path you are serving from.
