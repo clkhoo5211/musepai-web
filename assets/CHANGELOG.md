@@ -4,6 +4,89 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.53] — 2026-11-17 — Pay on the wallet's own chain; a local chain that matches MetaMask
+
+### Fixed
+- **"wrong network" on a correct wallet.** The send guard compared the target chain
+  with AppKit's own idea of the current chain (`modal.getChainId`), which lags for a
+  network registered only at pay time. The bridge now asks the wallet itself
+  (`eth_chainId`), switches with `wallet_switchEthereumChain` (adding the chain with
+  `wallet_addEthereumChain` if the wallet does not know it), and waits up to 20 s for
+  the wallet to report the chain before sending. Nothing is sent unless the wallet
+  reports the chain the order was priced for; a failure names both chains.
+- Switching before the answer came back (the call returns before the person has
+  approved) was read as a wrong network; it now waits.
+- MetaMask refuses a second network with the same RPC and another chain id, so a
+  local Hardhat chain on 31337 could not be added next to an existing "Anvil Local
+  (1337)". `LOCAL_CHAIN_ID` (read by `hardhat.config.js` and `run-local-pay.sh`) lets
+  the chain use 1337.
+
+### Verified
+- A full payment on the local chain: connect, switch, confirm in MetaMask, receipt
+  verified from the chain, order recorded with the transaction hash as its id and
+  shown in the bill history. Not run on Base Sepolia (no test ETH available).
+
+**Git tag:** `v0.5.53-wallet-chain-check`
+
+---
+
+## [0.5.52] — 2026-11-17 — Test the crypto checkout on a local chain
+
+### Added
+- **The payment network is a build-time setting.** `PAY_CHAIN_ID`, `PAY_CHAIN_NAME`,
+  `PAY_RPC_URL`, `PAY_EXPLORER_TX` and `PAY_CURRENCY_SYMBOL` default to Base Sepolia;
+  the checkout text takes the configured network name, and with no explorer URL no
+  link is shown. Chain 1 (Ethereum mainnet) is refused outright, so a mistaken define
+  cannot send real money.
+- **A local chain for testing without a faucet** in `deploy/local-testnet` (Hardhat,
+  chain 31337, pre-funded accounts, README in Chinese) and `deploy/run-local-pay.sh`,
+  which builds the app against it and serves `http://localhost:5199`. It never
+  publishes; the publish scripts are unchanged and pass none of the new defines.
+- `window.musepaiReown.setPayNetwork` registers a custom chain with the modal so the
+  wallet can switch to it.
+- An integration test against a real node (`deploy/local-testnet/integration.sh`):
+  a real transfer verifies; a wrong recipient, an amount above what was sent, and an
+  unknown hash do not.
+
+### Not verified
+- A click-through with MetaMask on the local chain, including the network switch.
+
+**Git tag:** `v0.5.52-local-chain-pay`
+
+---
+
+## [0.5.51] — 2026-11-17 — Signed-in wallet stays signed in; clearer pay errors
+
+### Fixed
+- **A wallet user fell back to guest a few seconds after the page opened.** The
+  startup check dropped the saved address when AppKit had not restored the wallet
+  session within 15 s, so the sidebar showed the signed-in menu and the next click
+  answered "请登录后使用此功能". The address is now kept (it is who the person is);
+  the provider only marks the live link `expired` (`sessionLive`), and paying asks
+  to reconnect. A late restore marks it live again.
+- **Messages, listening party, collaborative playlists, family (and follows,
+  notifications, import) bounced a signed-in wallet to the login page**, although
+  they were designed to open and show a "needs a Netease account" card. The route
+  guard now lets any signed-in identity open every page; Netease-backed screens say
+  what they need themselves.
+- The sidebar "登录" entry reads "账号" once signed in.
+- A wallet with no test ETH reported "missing revert data". The bridge now maps
+  `OutOfFunds` / insufficient funds and a rejected transaction to clear messages
+  ("not enough Base Sepolia test ETH for the connected account", "you rejected the
+  transaction").
+- Developer hints reached users in 15 strings (`./scripts/dev-stack.sh daemon`,
+  `Netease API (:30488)`, "dev-stack local API"): MV empty and error states,
+  discover, AI DJ, radio failure, settings and about. They now say the music
+  service is temporarily unavailable.
+
+### Not verified
+- Restoring a real MetaMask session after a reload, and a real payment, have not
+  been run; the tests use injected state and a fake RPC client.
+
+**Git tag:** `v0.5.51-signed-in-wallet-stays`
+
+---
+
 ## [0.5.50] — 2026-11-17 — A connected Reown wallet counts as signed in
 
 ### Changed
