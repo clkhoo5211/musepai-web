@@ -4,6 +4,35 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.45] — 2026-11-17 — The AI library plays without the backend
+
+### Changed
+- **The AI library is read straight from GitHub.** On 2026-11-13 Vercel
+  suspended the Hobby team for exceeding Fast Origin Transfer (unpause
+  2026-12-13), and `musepai-api.vercel.app` answered 402, so the site showed
+  no library. Every play streamed the mp3 through that backend, which is the
+  likely cause. `musepai-library` is now public, and when `LIBRARY_REPO` is
+  set the app reads `catalog/all.json` and each track's JSON from
+  raw.githubusercontent.com and the audio from the repo's release assets.
+  `publish-web.sh` and `publish-herenow.sh` set it by default.
+  `publish-herenow.sh` no longer aborts when the backend's CORS check fails;
+  it warns.
+- Netease, unlock and flags still use the backend and stay unavailable until
+  it is back.
+
+### Fixed
+- GitHub release downloads redirect to a host with no CORS headers, so
+  `crossOrigin=anonymous` made every library track fail to load.
+  `needsCrossOriginAnonymous` now skips them, and the audio visualiser no
+  longer routes a cross-origin element without CORS through Web Audio, which
+  would have played silence. Library tracks therefore have no equaliser or
+  visualiser; playback, seeking and lyrics are unaffected. Verified on both
+  sites by playing all 50 of the 2026-11-16 tracks.
+
+**Git tag:** `v0.5.45-library-direct`
+
+---
+
 ## [0.5.44] — 2026-10-10 — The lyric panel no longer gets lost on a far seek
 
 ### Fixed
