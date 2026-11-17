@@ -4,6 +4,47 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.49] — 2026-11-17 — Testnet crypto checkout (Base Sepolia)
+
+### Added
+- **A crypto payment method on the checkout screen, testnet only.** The user
+  connects a wallet with Reown, the app asks the wallet to send native ETH on
+  Base Sepolia (chain 84532) to `PAY_RECIPIENT`, and then verifies the receipt
+  over JSON-RPC from the client: status, chain, recipient, sender, amount and 2
+  confirmations. Only then is an order recorded, with the transaction hash as
+  its id. Prices are symbolic: ¥1 = 1e12 wei, so ¥48 is 0.000048 ETH.
+  `PAY_RECIPIENT` is a build-time define (`MUSEPAI_PAY_RECIPIENT` for the
+  publish scripts); without it the option shows as not configured.
+- `window.musepaiReown.sendNative(to, valueWei, chainId)` in the bridge. It
+  refuses to send unless the wallet is on the requested chain and the signer is
+  the connected account. It does not use `features.pay`, which would turn email
+  and social login off.
+- A pending transaction is saved as soon as the wallet returns a hash, and
+  verified by the provider rather than the screen, so leaving the page does not
+  lose the payment.
+- Hashes are validated, lower-cased and refused if already used by any wallet in
+  the browser; the quote (plan, amount, payer) is frozen when payment starts.
+- A connected Reown wallet can open the purchase pages (VIP, checkout, billing,
+  payment success). It was treated as a guest and sent to the login page.
+
+### Fixed
+- Coupon WELCOME50 could take a plan to ¥0. The total is now at least ¥1.
+- Release builds showed a demo account, a fake active plan, mock orders and
+  made-up billing figures, and the simulated payment methods recorded a "paid"
+  order with no payment. All of that is now limited to debug builds.
+
+### Not done
+- This is display-grade. Entitlement lives in browser storage and can be edited,
+  and the verifier trusts one public RPC. A server must own entitlement before
+  any paid content is gated on it.
+- The send, network switch and account check have not been run against a real
+  wallet; they are covered by code review and unit tests only.
+- The tests use a fake HTTP client; nothing was verified on chain.
+
+**Git tag:** `v0.5.49-testnet-crypto-checkout`
+
+---
+
 ## [0.5.48] — 2026-11-17 — Reown modal: the five wanted providers on the main row
 
 ### Changed
