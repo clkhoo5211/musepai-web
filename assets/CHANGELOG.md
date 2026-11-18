@@ -4,6 +4,18 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.58] — 2026-11-18 — Remove the `?nobalcheck=1` switch
+
+### Removed
+- `?nobalcheck=1` (0.5.57). It was only there to open the wallet's confirm box without
+  funds; the recipient was read on all six chains (Ethereum, Base, Arbitrum One, OP
+  Mainnet, Polygon, BNB Smart Chain: all `0x5274…495d`, 6.666667 USDC) and the switch
+  is gone, so the token-balance check always runs again before the wallet prompt.
+
+**Git tag:** `v0.5.58-remove-nobalcheck`
+
+---
+
 ## [0.5.57] — 2026-11-18 — BNB Smart Chain USDC; a way to read the confirm box without funds
 
 ### Added
