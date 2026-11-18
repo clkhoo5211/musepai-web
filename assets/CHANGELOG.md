@@ -4,6 +4,20 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.59] — 2026-11-18 — Hide Netease-only pages for wallet logins; backend host for admins only
+
+### Changed
+- Sidebar and mobile drawer no longer list the seven Netease-fed pages (import playlist,
+  followers, notifications, messages, party, collaborative, family) unless the session
+  has a Netease login or the admin token (`GuestPolicy.neteaseOnlyRoutes`).
+- The backend host is shown only to the admin: About (status card and Netease API
+  badge) and Privacy ("forwarded via …"). Visitors see "enabled" / "backend proxy".
+  It still appears in network requests; hiding that needs a custom domain.
+
+**Git tag:** `v0.5.59-hide-netease-pages-and-host`
+
+---
+
 ## [0.5.58] — 2026-11-18 — Remove the `?nobalcheck=1` switch
 
 ### Removed
