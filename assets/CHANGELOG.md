@@ -4,6 +4,18 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.55] — 2026-11-18 — Admin console wording
+
+### Fixed
+- The "enter the admin token to change anything" note sat under the payment-recipient
+  card, which does not need that token (it uses a GitHub token). It now says the
+  token is for the section switches and the Reown project id.
+- The GitHub token field's hint was cut off on a narrow screen; shortened.
+
+**Git tag:** `v0.5.55-admin-wording`
+
+---
+
 ## [0.5.54] — 2026-11-17 — The payment recipient is set from the admin console
 
 ### Added
