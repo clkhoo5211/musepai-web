@@ -4,6 +4,23 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.57] — 2026-11-18 — BNB Smart Chain USDC; a way to read the confirm box without funds
+
+### Added
+- **BNB Smart Chain** in the mainnet USDC checkout. This is **Binance-Peg USDC**
+  (`0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d`, **18 decimals**, name "USD Coin"),
+  not Circle-native: Circle's address list has no BNB Smart Chain entry. Added at the
+  owner's explicit request. The token and its decimals are hard-coded per chain
+  (registry and bridge table), amounts still round UP at 6-decimal granularity so the
+  displayed 6.666667 USDC is exactly what is sent, and the verifier compares raw units.
+- `?nobalcheck=1` (remembered for the session): skips the token-balance pre-check and
+  sets a fixed gas limit so the wallet's confirm box opens without USDC, to read the
+  recipient and token contract. Confirming anyway reverts on chain and only costs gas.
+
+**Git tag:** `v0.5.57-bsc-usdc`
+
+---
+
 ## [0.5.56] — 2026-11-18 — Mainnet USDC checkout (real money)
 
 ### Added
