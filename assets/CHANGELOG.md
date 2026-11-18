@@ -4,6 +4,39 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.56] — 2026-11-18 — Mainnet USDC checkout (real money)
+
+### Added
+- **USDC checkout on Ethereum, Base, Arbitrum One, OP Mainnet and Polygon PoS.** Off
+  unless built with `PAY_MAINNET=true` (publish scripts: `MUSEPAI_PAY_MAINNET=true`).
+  Token addresses are hard-coded and were checked two independent ways (on-chain
+  `symbol()`/`decimals()`, and Circle's official address list). BNB Smart Chain is
+  left out: its USDC is Binance-Peg (18 decimals) and not in Circle's list.
+- Chain chips, a CNY -> USDC price (default 7.2 CNY/USD, admin-editable in `pay.json`
+  as `cnyPerUsd`, accepted only in [5, 10], rounded UP so nobody underpays), and a
+  real-money / gas note.
+- `sendErc20` in the web bridge (same wallet-chain check as the native send).
+- Verification reads the chain: receipt status, `tx.to` and `tx.from`, a Transfer log
+  emitted BY the USDC contract to the recipient from the payer for at least the frozen
+  amount, chain id, and per-chain confirmations. Fake logs, other tokens, one unit
+  short and wrong recipients are all rejected, each with a test.
+- Quote freezes chain, token, decimals, amount, rate and recipient, and resumes from
+  the stored values.
+- Admin console confirms before saving the recipient and can set `cnyPerUsd`.
+
+### Safety
+- A mainnet build refuses the public Hardhat/Anvil accounts as recipient (their keys are
+  public), in the app and in the publish scripts.
+
+### Not covered
+- Entitlement is still browser-local and forgeable: money arrives at the recipient, but
+  nothing server-side stops someone granting themselves the plan. The USDC send path
+  was tested with mocks and an offline calldata check only, not with a real wallet.
+
+**Git tag:** `v0.5.56-mainnet-usdc`
+
+---
+
 ## [0.5.55] — 2026-11-18 — Admin console wording
 
 ### Fixed
