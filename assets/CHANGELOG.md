@@ -4,6 +4,17 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.60] — 2026-11-18 — No `/like` request without a Netease login
+
+### Changed
+- `FavoriteProvider.toggleFavorite` only calls the backend `/like` when a Netease
+  cookie is set. Wallet / social logins keep favourites on the device only; before,
+  every toggle sent a pointless request (swallowed on failure, slow when the backend is down).
+
+**Git tag:** `v0.5.60-like-needs-netease`
+
+---
+
 ## [0.5.59] — 2026-11-18 — Hide Netease-only pages for wallet logins; backend host for admins only
 
 ### Changed

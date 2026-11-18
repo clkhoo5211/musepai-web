@@ -122496,24 +122496,29 @@ else B.d.fb(i,k)
 o.I()
 s=2
 return A.d(o.xx(),$async$k7)
-case 2:q=4
-i=$.ax
-if(i==null)i=$.ax=A.bA(null)
-m=t.N
-s=7
-return A.d(i.c.a.dI("/like",A.a9(["id",""+a.a,"like",String(j)],m,m)),$async$k7)
-case 7:q=1
-s=6
+case 2:i=$.ax
+if(i==null){i=$.ax=A.bA(null)
+m=i}else m=i
+i=i.a.c
+if(i==null)i=""
+s=i.length!==0?3:4
 break
-case 4:q=3
+case 3:q=6
+i=t.N
+s=9
+return A.d(m.c.a.dI("/like",A.a9(["id",""+a.a,"like",String(j)],i,i)),$async$k7)
+case 9:q=1
+s=8
+break
+case 6:q=5
 h=p.pop()
 n=A.a5(h)
 A.aU().$1("[FavoriteProvider] cloud like error: "+A.y(n))
-s=6
+s=8
 break
-case 3:s=1
+case 5:s=1
 break
-case 6:return A.o(null,r)
+case 8:case 4:return A.o(null,r)
 case 1:return A.n(p.at(-1),r)}})
 return A.p($async$k7,r)},
 oO(a){return B.d.h2(this.a,new A.at7(a))}}
