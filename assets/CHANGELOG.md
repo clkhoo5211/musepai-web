@@ -4,6 +4,22 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.62] — 2026-11-26 — Audio stream proxy falls back to the Worker
+
+### Added
+- Worker routes `/api/unlock/stream` (Referer-aware pass-through, Range, CORS) and `/api/unlock/health`.
+- `UNLOCK_API_FALLBACKS` dart-define (publish scripts default it to the Worker's `/api/unlock`).
+
+### Changed
+- `PlayerProvider` probes the primary unlock base's `/health` (cached 2 min); when it fails,
+  `PlayUrlUtils.streamBaseOverride` rewrites `/stream` URLs to the fallback, including URLs the resolver already wrapped.
+  Verified live with Vercel paused: playback streams from the Worker.
+- Not covered: `/api/unlock/music` (kuwo unblock) is still Vercel-only; GD Music (joox) tracks play.
+
+**Git tag:** `v0.5.62-stream-fallback`
+
+---
+
 ## [0.5.61] — 2026-11-26 — Backend fallback to a Cloudflare Worker
 
 ### Added
