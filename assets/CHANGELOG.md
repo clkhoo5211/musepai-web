@@ -4,6 +4,22 @@ All notable changes to MusePAI are documented here.
 
 ---
 
+## [0.5.61] — 2026-11-26 — Backend fallback to a Cloudflare Worker
+
+### Added
+- `deploy/cf-worker/`: a Cloudflare Worker (`musepai-ncm.clkhoo.workers.dev`) serving `/api/ncm/*`
+  from the Netease API module, with CORS. Public feeds only; `/api/unlock` and login stay on Vercel.
+- `NETEASE_API_FALLBACKS` dart-define; the publish scripts default it to the Worker
+  (override with `MUSEPAI_BACKEND_FALLBACK`).
+
+### Changed
+- `ApiClient` tries each Netease base in turn (non-200 or exception → next) and remembers the one that worked.
+  Verified live: with Vercel returning 402, both web builds fall over to the Worker.
+
+**Git tag:** `v0.5.61-backend-fallback`
+
+---
+
 ## [0.5.60] — 2026-11-18 — No `/like` request without a Netease login
 
 ### Changed
